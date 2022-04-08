@@ -26,7 +26,28 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions:
                         [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
-        streamChat = StreamChat(chatClient: chatClient)
+        var colors = ColorPalette()
+        let streamBlue = UIColor(red: 0, green: 108.0 / 255.0, blue: 255.0 / 255.0, alpha: 1)
+        colors.tintColor = Color(streamBlue)
+        
+        var fonts = Fonts()
+        
+        fonts.footnoteBold = Font.footnote
+        fonts.body = Font.title
+        
+        let images = Images()
+        
+        images.reactionLoveBig = UIImage(systemName: "heart.fill")!
+        
+        let appearance = Appearance(colors: colors, images: images, fonts: fonts)
+        
+        let channelNamer: ChatChannelNamer = { channel, currentUserId in
+            "This is our custom name: \(channel.name ?? "no name")"
+        }
+        
+        let utils = Utils(channelNamer: channelNamer)
+        
+        streamChat = StreamChat(chatClient: chatClient, appearance: appearance, utils: utils)
         
         connectUser()
         
@@ -50,4 +71,41 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 }
             }
         }
+}
+
+// The `ViewFactory` is a central class in the view modification logic of the Stream Chat SDK.
+// By overriding functions with your own implementations, you are able to dorectly influence
+// which views get loaded.
+class CustomViewFactory: ViewFactory {
+    @Injected(\.chatClient) public var chatClient
+    
+    // This function defines how each text message is displayed.
+    func makeMessageTextView(for message: ChatMessage,
+                             isFirst: Bool,
+                             availableWidth: CGFloat) -> some View {
+        return CustomMessageTextView(message: message, isFirst: isFirst)
+    }
+}
+
+struct CustomMessageTextView: View {
+    @Injected(\.colors) var colors
+    @Injected(\.fonts) var fonts
+    
+    var message: ChatMessage
+    var isFirst: Bool
+    
+    public var body: some View {
+        Text(message.text)
+            .padding()
+            .messageBubble(for: message, isFirst: isFirst)
+            .foregroundColor(Color(colors.text))
+            .font(fonts.bodyBold)
+            .overlay(
+                BottomRightView {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .offset(x: 1, y: -1)
+                }
+            )
+    }
 }
